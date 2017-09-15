@@ -21,9 +21,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
-	"strings"
 
+	linuxproc "github.com/c9s/goprocinfo/linux"
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"k8s.io/api/core/v1"
@@ -39,8 +41,6 @@ const (
 
 type nfsProvisioner struct {
 	client kubernetes.Interface
-	server string
-	path   string
 }
 
 const (
@@ -49,25 +49,62 @@ const (
 
 var _ controller.Provisioner = &nfsProvisioner{}
 
+func inMap(key string, m map[string]string) bool {
+	_, ok := m[key]
+	return ok
+}
+
+func isMounted(mp string) bool {
+	mps, err := linuxproc.ReadMounts("/proc/mounts")
+	if err != nil {
+		return false
+	}
+	for _, m := range mps.Mounts {
+		if m.MountPoint == mp {
+			return true
+		}
+	}
+	return false
+}
+
+func pvName(ns, name string) string {
+	return fmt.Sprintf("%s-%s", ns, name)
+}
+
+func ensureMount(server, path, mp string) error {
+	if isMounted(mp) {
+		return nil
+	}
+	if err := os.MkdirAll(mp, 0777); err != nil {
+		return err
+	}
+	// has to be deployed as priviliged container
+	cmd := exec.Command("mount", fmt.Sprintf("%s:%s", server, path), mp)
+	return cmd.Run()
+}
+
 func (p *nfsProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
 	if options.PVC.Spec.Selector != nil {
 		return nil, fmt.Errorf("claim Selector is not supported")
 	}
 	glog.V(4).Infof("nfs provisioner: VolumeOptions %v", options)
+	params := options.Parameters
+	if !(inMap("nfsPath", params) && inMap("nfsServer", params)) {
+		return nil, fmt.Errorf("nfsPath and nfsServer parameters required")
+	}
+	server := params["nfsServer"]
+	path := params["nfsPath"]
 
-	pvcNamespace := options.PVC.Namespace
-	pvcName := options.PVC.Name
+	mountPoint := filepath.Join(mountPath, server)
+	err := ensureMount(server, path, mountPoint)
+	if err != nil {
+		return nil, fmt.Errorf("unable to mount NFS volume: " + err.Error())
+	}
 
-	pvName := strings.Join([]string{pvcNamespace, pvcName, options.PVName}, "-")
-
-	fullPath := filepath.Join(mountPath, pvName)
-	glog.V(4).Infof("creating path %s", fullPath)
-	if err := os.MkdirAll(fullPath, 0777); err != nil {
+	pvName := pvName(options.PVC.Namespace, options.PVName)
+	if err := os.MkdirAll(filepath.Join(mountPoint, pvName), 0777); err != nil {
 		return nil, errors.New("unable to create directory to provision new pv: " + err.Error())
 	}
-	os.Chmod(fullPath, 0777)
-
-	path := filepath.Join(p.path, pvName)
 
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -81,8 +118,8 @@ func (p *nfsProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				NFS: &v1.NFSVolumeSource{
-					Server:   p.server,
-					Path:     path,
+					Server:   server,
+					Path:     filepath.Join(path, pvName),
 					ReadOnly: false,
 				},
 			},
@@ -92,11 +129,19 @@ func (p *nfsProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 }
 
 func (p *nfsProvisioner) Delete(volume *v1.PersistentVolume) error {
-	path := volume.Spec.PersistentVolumeSource.NFS.Path
-	pvName := filepath.Base(path)
-	oldPath := filepath.Join(mountPath, pvName)
-	archivePath := filepath.Join(mountPath, "archived-"+pvName)
-	glog.V(4).Infof("archiving path %s to %s", oldPath, archivePath)
+	server := volume.Spec.PersistentVolumeSource.NFS.Server
+	// Path include the dynamic volume name
+	path := path.Dir(volume.Spec.PersistentVolumeSource.NFS.Path)
+	err := ensureMount(server, path, filepath.Join(mountPath, server))
+	if err != nil {
+		glog.Errorf("Failed to mount %s:%s", server, path)
+		return err
+	}
+	// PV is **not** namespaced
+	pvName := pvName(volume.Spec.ClaimRef.Namespace, volume.ObjectMeta.Name)
+	oldPath := filepath.Join(mountPath, server, pvName)
+	archivePath := filepath.Join(mountPath, server, "archived-"+pvName)
+	glog.Infof("archiving path %s to %s", oldPath, archivePath)
 	return os.Rename(oldPath, archivePath)
 }
 
@@ -104,14 +149,6 @@ func main() {
 	flag.Parse()
 	flag.Set("logtostderr", "true")
 
-	server := os.Getenv("NFS_SERVER")
-	if server == "" {
-		glog.Fatal("NFS_SERVER not set")
-	}
-	path := os.Getenv("NFS_PATH")
-	if path == "" {
-		glog.Fatal("NFS_PATH not set")
-	}
 	provisionerName := os.Getenv(provisionerNameKey)
 	if provisionerName == "" {
 		glog.Fatalf("environment variable %s is not set! Please set it.", provisionerNameKey)
@@ -135,10 +172,7 @@ func main() {
 		glog.Fatalf("Error getting server version: %v", err)
 	}
 
-	clientNFSProvisioner := &nfsProvisioner{
-		server: server,
-		path:   path,
-	}
+	clientNFSProvisioner := &nfsProvisioner{}
 	// Start the provision controller which will dynamically provision efs NFS
 	// PVs
 	pc := controller.NewProvisionController(clientset, provisionerName, clientNFSProvisioner, serverVersion.GitVersion)
