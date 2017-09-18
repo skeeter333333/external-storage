@@ -20,6 +20,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -67,20 +68,25 @@ func isMounted(mp string) bool {
 	return false
 }
 
-func pvName(ns, name string) string {
+func pvName(ns string, name string) string {
 	return fmt.Sprintf("%s-%s", ns, name)
 }
 
-func ensureMount(server, path, mp string) error {
+func mountPoint(server string, path string) string {
+	return fmt.Sprintf("%s/%s/%s", mountPath, server, url.QueryEscape(path))
+}
+
+func ensureMount(server string, path string) (string, error) {
+	mp := mountPoint(server, path)
 	if isMounted(mp) {
-		return nil
+		return mp, nil
 	}
 	if err := os.MkdirAll(mp, 0777); err != nil {
-		return err
+		return mp, err
 	}
 	// has to be deployed as priviliged container
 	cmd := exec.Command("mount", fmt.Sprintf("%s:%s", server, path), mp)
-	return cmd.Run()
+	return mp, cmd.Run()
 }
 
 func (p *nfsProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
@@ -95,14 +101,13 @@ func (p *nfsProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 	server := params["nfsServer"]
 	path := params["nfsPath"]
 
-	mountPoint := filepath.Join(mountPath, server)
-	err := ensureMount(server, path, mountPoint)
+	mp, err := ensureMount(server, path)
 	if err != nil {
 		return nil, fmt.Errorf("unable to mount NFS volume: " + err.Error())
 	}
 
 	pvName := pvName(options.PVC.Namespace, options.PVName)
-	if err := os.MkdirAll(filepath.Join(mountPoint, pvName), 0777); err != nil {
+	if err := os.MkdirAll(filepath.Join(mp, pvName), 0777); err != nil {
 		return nil, errors.New("unable to create directory to provision new pv: " + err.Error())
 	}
 
@@ -132,15 +137,15 @@ func (p *nfsProvisioner) Delete(volume *v1.PersistentVolume) error {
 	server := volume.Spec.PersistentVolumeSource.NFS.Server
 	// Path include the dynamic volume name
 	path := path.Dir(volume.Spec.PersistentVolumeSource.NFS.Path)
-	err := ensureMount(server, path, filepath.Join(mountPath, server))
+	mp, err := ensureMount(server, path)
 	if err != nil {
 		glog.Errorf("Failed to mount %s:%s", server, path)
 		return err
 	}
 	// PV is **not** namespaced
 	pvName := pvName(volume.Spec.ClaimRef.Namespace, volume.ObjectMeta.Name)
-	oldPath := filepath.Join(mountPath, server, pvName)
-	archivePath := filepath.Join(mountPath, server, "archived-"+pvName)
+	oldPath := filepath.Join(mp, pvName)
+	archivePath := filepath.Join(mp, "archived-"+pvName)
 	glog.Infof("archiving path %s to %s", oldPath, archivePath)
 	return os.Rename(oldPath, archivePath)
 }
