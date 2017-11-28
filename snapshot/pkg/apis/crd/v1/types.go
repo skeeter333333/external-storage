@@ -27,12 +27,8 @@ import (
 const (
 	// VolumeSnapshotDataResourcePlural is "volumesnapshotdatas"
 	VolumeSnapshotDataResourcePlural = "volumesnapshotdatas"
-	// VolumeSnapshotDataResource is "volume-snapshot-data"
-	VolumeSnapshotDataResource = "volume-snapshot-data"
 	// VolumeSnapshotResourcePlural is "volumesnapshots"
 	VolumeSnapshotResourcePlural = "volumesnapshots"
-	// VolumeSnapshotResource is "volume-snapshot"
-	VolumeSnapshotResource = "volume-snapshot"
 )
 
 // VolumeSnapshotStatus is the status of the VolumeSnapshot
@@ -41,7 +37,7 @@ type VolumeSnapshotStatus struct {
 	// +optional
 	CreationTimestamp metav1.Time `json:"creationTimestamp" protobuf:"bytes,1,opt,name=creationTimestamp"`
 
-	// Representes the latest available observations about the volume snapshot
+	// Represent the latest available observations about the volume snapshot
 	Conditions []VolumeSnapshotCondition `json:"conditions" protobuf:"bytes,2,rep,name=conditions"`
 }
 
@@ -80,6 +76,7 @@ type VolumeSnapshotCondition struct {
 }
 
 // +genclient=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VolumeSnapshot is the volume snapshot object accessible to the user. Upon succesful creation of the actual
 // snapshot by the volume provider it is bound to the corresponding VolumeSnapshotData through
@@ -96,6 +93,8 @@ type VolumeSnapshot struct {
 	// +optional
 	Status VolumeSnapshotStatus `json:"status" protobuf:"bytes,3,opt,name=status"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VolumeSnapshotList is a list of VolumeSnapshot objects
 type VolumeSnapshotList struct {
@@ -124,6 +123,8 @@ type VolumeSnapshotDataStatus struct {
 	// Representes the lates available observations about the volume snapshot
 	Conditions []VolumeSnapshotDataCondition `json:"conditions" protobuf:"bytes,2,rep,name=conditions"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VolumeSnapshotDataList is a list of VolumeSnapshotData objects
 type VolumeSnapshotDataList struct {
@@ -164,6 +165,7 @@ type VolumeSnapshotDataCondition struct {
 
 // +genclient=true
 // +nonNamespaced=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VolumeSnapshotData represents the actual "on-disk" snapshot object
 type VolumeSnapshotData struct {
@@ -292,7 +294,7 @@ func (vd *VolumeSnapshotDataList) GetObjectKind() schema.ObjectKind {
 }
 
 // GetListMeta is required to satisfy ListMetaAccessor interface
-func (vd *VolumeSnapshotDataList) GetListMeta() metav1.List {
+func (vd *VolumeSnapshotDataList) GetListMeta() metav1.ListInterface {
 	return &vd.Metadata
 }
 
@@ -312,7 +314,7 @@ func (vd *VolumeSnapshotList) GetObjectKind() schema.ObjectKind {
 }
 
 // GetListMeta is required to satisfy ListMetaAccessor interface
-func (vd *VolumeSnapshotList) GetListMeta() metav1.List {
+func (vd *VolumeSnapshotList) GetListMeta() metav1.ListInterface {
 	return &vd.Metadata
 }
 

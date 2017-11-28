@@ -49,7 +49,7 @@ const (
 	creatorAnn         = "kubernetes.io/createdby"
 	volumeTypeAnn      = "gluster.org/type"
 	descAnn            = "Gluster-external: Dynamically provisioned PV"
-	provisionerVersion = "v1.0.0"
+	provisionerVersion = "v1.0.3"
 	chapType           = "kubernetes.io/iscsi-chap"
 	blockVolPrefix     = "blockvol_"
 	heketiOpmode       = "heketi"
@@ -361,7 +361,7 @@ func (p *glusterBlockProvisioner) createVolume(volSizeInt int, blockVol string, 
 		// Execute gluster-block command.
 		cmd := exec.Command(
 			config.opMode, "create", config.blockModeArgs["glustervol"]+"/"+blockVol,
-			"ha", haCountStr, config.blockModeArgs["hosts"], sizeStr, "--json")
+			"ha", haCountStr, config.blockModeArgs["hosts"], sizeStr+"GB", "--json")
 
 		out, cmdErr := cmd.CombinedOutput()
 		if cmdErr != nil {
