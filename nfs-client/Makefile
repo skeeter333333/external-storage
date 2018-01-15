@@ -23,19 +23,19 @@ IMAGE_ARM = $(REGISTRY)nfs-client-provisioner-arm:$(VERSION)
 MUTABLE_IMAGE = $(REGISTRY)nfs-client-provisioner:latest
 MUTABLE_IMAGE_ARM = $(REGISTRY)nfs-client-provisioner-arm:latest
 
-all: build image build_arm image_arm 
+all: build image
 
-container: build image build_arm image_arm
+container: build image
 
 build:
-	CGO_ENABLED=0 go build -o docker/x86_64/nfs-client-provisioner ./cmd/nfs-client-provisioner
+	GOOS=linux CGO_ENABLED=0 go build -o docker/x86_64/nfs-client-provisioner ./cmd/nfs-client-provisioner
 
 build_arm:
 	CGO_ENABLED=0 GOARCH=arm GOARM=7 go build -o docker/arm/nfs-client-provisioner ./cmd/nfs-client-provisioner 
 	
 image:
-	sudo docker build -t $(MUTABLE_IMAGE) docker/x86_64
-	sudo docker tag $(MUTABLE_IMAGE) $(IMAGE)
+	docker build -t $(MUTABLE_IMAGE) docker/x86_64
+	docker tag $(MUTABLE_IMAGE) $(IMAGE)
 
 image_arm:
 	sudo docker run --rm --privileged multiarch/qemu-user-static:register --reset
