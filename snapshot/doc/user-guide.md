@@ -18,6 +18,7 @@ Many storage systems provide the ability to create "snapshots" of a persistent v
     * GCE PD
     * HostPath
     * OpenStack Cinder
+    * GlusterFS
 
 # Lifecycle of a Volume Snapshot and Volume Snapshot Data
 
@@ -84,7 +85,7 @@ apiVersion: volumesnapshot.external-storage.k8s.io/v1
     selfLink: /apis/volumesnapshot.external-storage.k8s.io/v1/namespaces/default/volumesnapshots/snapshot-demo
     uid: 9cc5da57-9d42-11e7-9b25-90b11c132b3f
   spec:
-    persistentVolumeClaimName: pvc-hostpath
+    persistentVolumeClaimName: ebs-pvc
     snapshotDataName: k8s-volume-snapshot-9cc8813e-9d42-11e7-8bed-90b11c132b3f
   status:
     conditions:
@@ -116,7 +117,7 @@ A Persistent Volume will be created and bound to the Persistent Volume Claim. Th
 ## Deleting Snapshot
 A Volume Snapshot `snapshot-demo` can be deleted as shown below:
 ```
-$ kubectl delete -f volumesnapshot/snapshot-demo
+$ kubectl delete volumesnapshot/snapshot-demo
 ```
 The Volume Snapshot Data that are bound to the Volume Snapshot are also automatically deleted.
 
