@@ -48,3 +48,6 @@ $ oc patch deployment nfs-client-provisioner -p '{"spec":{"template":{"spec":{"s
 - `kubectl delete -f deploy/test-pod.yaml`
 - `kubectl delete -f deploy/test-claim.yaml`
 - check the folder renamed to `archived-???`
+
+# This Clone
+* Fully dynamic
