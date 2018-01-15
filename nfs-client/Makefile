@@ -18,10 +18,10 @@ endif
 ifeq ($(VERSION),)
         VERSION = latest
 endif
-IMAGE = $(REGISTRY)nfs-client-provisioner:$(VERSION)
-IMAGE_ARM = $(REGISTRY)nfs-client-provisioner-arm:$(VERSION) 
-MUTABLE_IMAGE = $(REGISTRY)nfs-client-provisioner:latest
-MUTABLE_IMAGE_ARM = $(REGISTRY)nfs-client-provisioner-arm:latest
+IMAGE = $(REGISTRY)nfs-provisioner:$(VERSION)
+IMAGE_ARM = $(REGISTRY)nfs-provisioner-arm:$(VERSION) 
+MUTABLE_IMAGE = $(REGISTRY)nfs-provisioner:latest
+MUTABLE_IMAGE_ARM = $(REGISTRY)nfs-provisioner-arm:latest
 
 all: build image
 
