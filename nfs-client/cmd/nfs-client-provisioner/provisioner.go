@@ -68,8 +68,8 @@ func isMounted(mp string) bool {
 	return false
 }
 
-func pvName(ns string, name string) string {
-	return fmt.Sprintf("%s-%s", ns, name)
+func pvName(tenant string, stack string, service string, ns string, name string) string {
+	return fmt.Sprintf("%s-%s-%s-%s-%s", tenant, stack, service, ns, name)
 }
 
 func mountPoint(server string, path string) string {
@@ -106,7 +106,8 @@ func (p *nfsProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 		return nil, fmt.Errorf("unable to mount NFS volume: " + err.Error())
 	}
 
-	pvName := pvName(options.PVC.Namespace, options.PVName)
+	pvName := pvName(options.Tenant, options.Stack, options.Service, options.PVC.Namespace, options.PVName)
+
 	if err := os.MkdirAll(filepath.Join(mp, pvName), 0777); err != nil {
 		return nil, errors.New("unable to create directory to provision new pv: " + err.Error())
 	}
@@ -139,11 +140,12 @@ func (p *nfsProvisioner) Delete(volume *v1.PersistentVolume) error {
 	path := path.Dir(volume.Spec.PersistentVolumeSource.NFS.Path)
 	mp, err := ensureMount(server, path)
 	if err != nil {
-		glog.Errorf("Failed to mount %s:%s", server, path)
+		glog.Errorf("Failed to mount %s:%s %s", server, path, mp)
 		return err
 	}
 	// PV is **not** namespaced
-	pvName := pvName(volume.Spec.ClaimRef.Namespace, volume.ObjectMeta.Name)
+	tenant, stack, service := volume.Labels["io.wise2c.tenant"], volume.Labels["io.wise2c.stack"], volume.Labels["io.wise2c.service"]
+	pvName := pvName(tenant, stack, service, volume.Spec.ClaimRef.Namespace, volume.ObjectMeta.Name)
 	oldPath := filepath.Join(mp, pvName)
 	archivePath := filepath.Join(mp, "archived-"+pvName)
 	glog.Infof("archiving path %s to %s", oldPath, archivePath)
