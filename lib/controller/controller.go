@@ -744,6 +744,12 @@ func (ctrl *ProvisionController) updateDeleteStats(volume *v1.PersistentVolume, 
 	}
 }
 
+func (ctrl *ProvisionController) getProvisionedTenantAndStackAndServerNameForClaim(
+	claim *v1.PersistentVolumeClaim) (tenant string, stack string, service string) {
+	tenant, stack, service = claim.Labels["io.wise2c.tenant"], claim.Labels["io.wise2c.stack"], claim.Labels["io.wise2c.service"]
+	return
+}
+
 // provisionClaimOperation attempts to provision a volume for the given claim.
 // Returns an error for use by goroutinemap when expbackoff is enabled: if nil,
 // the operation is deleted, else the operation may be retried with expbackoff.
@@ -793,7 +799,6 @@ func (ctrl *ProvisionController) provisionClaimOperation(claim *v1.PersistentVol
 	}
 
 	tenant, stack, service := ctrl.getProvisionedTenantAndStackAndServerNameForClaim(claim)
-
 	options := VolumeOptions{
 		PersistentVolumeReclaimPolicy: reclaimPolicy,
 		PVName:                        pvName,

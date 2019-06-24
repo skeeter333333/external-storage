@@ -68,7 +68,12 @@ type VolumeOptions struct {
 	Parameters map[string]string
 
 	// Tenant: Service tenant name for the persistent volume.
+	Tenant string
+
 	// Stack: The service stack for the persistent volume.
+	Stack string
+
 	// Service: The service name of the persistent volume.
-	Tenant, Stack, Service string
+	Service string
+
 }
