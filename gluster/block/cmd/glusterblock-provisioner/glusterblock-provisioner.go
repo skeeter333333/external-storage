@@ -159,7 +159,6 @@ func (p *glusterBlockProvisioner) GetAccessModes() []v1.PersistentVolumeAccessMo
 
 // Provision creates a storage asset and returns a PV object representing it.
 func (p *glusterBlockProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
-
 	var err error
 	if options.PVC.Spec.Selector != nil {
 		return nil, fmt.Errorf(" claim Selector is not supported")

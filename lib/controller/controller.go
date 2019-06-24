@@ -797,6 +797,7 @@ func (ctrl *ProvisionController) provisionClaimOperation(claim *v1.PersistentVol
 			return err
 		}
 	}
+
 	tenant, stack, service := ctrl.getProvisionedTenantAndStackAndServerNameForClaim(claim)
 	options := VolumeOptions{
 		PersistentVolumeReclaimPolicy: reclaimPolicy,
@@ -1085,6 +1086,12 @@ func (ctrl *ProvisionController) deleteVolumeOperation(volume *v1.PersistentVolu
 // The name must be unique.
 func (ctrl *ProvisionController) getProvisionedVolumeNameForClaim(claim *v1.PersistentVolumeClaim) string {
 	return "pvc-" + string(claim.UID)
+}
+
+func (ctrl *ProvisionController) getProvisionedTenantAndStackAndServerNameForClaim(
+	claim *v1.PersistentVolumeClaim) (tenant string, stack string, service string) {
+	tenant, stack, service = claim.Labels["io.wise2c.tenant"], claim.Labels["io.wise2c.stack"], claim.Labels["io.wise2c.service"]
+	return
 }
 
 // scheduleOperation starts given asynchronous operation on given volume. It
