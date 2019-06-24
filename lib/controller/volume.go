@@ -66,4 +66,13 @@ type VolumeOptions struct {
 	PVC *v1.PersistentVolumeClaim
 	// Volume provisioning parameters from StorageClass
 	Parameters map[string]string
+
+	// Tenant: Service tenant name for the persistent volume.
+	Tenant string
+
+	// Stack: The service stack for the persistent volume.
+	Stack string
+
+	// Service: The service name of the persistent volume.
+	Service string
 }
